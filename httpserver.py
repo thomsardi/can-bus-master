@@ -3,6 +3,7 @@ from flask import Flask, request, make_response
 from datareaderthread import DataCollection
 import queue
 from dataproviderthread import CanDataSimulator
+import can
 
 class Server(threading.Thread) :
     def __init__(self, name : str, data : DataCollection) :
@@ -27,10 +28,12 @@ class Server(threading.Thread) :
                 data = request.json
                 value = data['override']
                 uniqueId = 160
-                msg = CanDataSimulator()
+                # msg = CanDataSimulator()
+                msg = can.Message()
                 msg.arbitration_id = 0x1D41C8E8
                 msg.dlc = 8
                 msg.data = [(uniqueId & 0xFF), (uniqueId >> 8), value, 0, 0, 0, 0, 0]
+                msg.is_extended_id = True
                 self.linkQueue.put(msg)
                 return make_response("", 200)
             except :
@@ -42,43 +45,66 @@ class Server(threading.Thread) :
             try :
                 data = request.json
                 value = data['relay']
-                msg = CanDataSimulator()
+                # msg = CanDataSimulator()
+                msg = can.Message()
                 msg.arbitration_id = 0x1D40C8E8
                 msg.dlc = 8
                 msg.data = [value, 1, 1, 1, 1, 1, 1, 1]
+                msg.is_extended_id = True
                 self.linkQueue.put(msg)
                 return make_response("", 200)
             except :
                 return make_response("", 400)
             
         
-        @self.app.post('/lvd-config')
-        def lvdConfig() :
+        @self.app.post('/lvd-low-voltage-config')
+        def lvdLowConfig() :
             try :
                 data = request.json
                 vsat = data['vsat']
                 other = data['other']
                 bts = data['bts']
-                tolerance = data['tolerance']
-                msg = CanDataSimulator()
+                # msg = CanDataSimulator()
+                msg = can.Message()
                 msg.arbitration_id = 0x1D42C8E8
                 msg.dlc = 8
-                msg.data = [(vsat & 0xFF), (vsat >> 8), (other & 0xFF), (other >> 8), (bts & 0xFF), (bts >> 8), (tolerance & 0xFF), (tolerance >> 8)]
+                msg.data = [(vsat & 0xFF), (vsat >> 8), (other & 0xFF), (other >> 8), (bts & 0xFF), (bts >> 8), 0, 0]
+                msg.is_extended_id = True
                 self.linkQueue.put(msg)
                 return make_response("", 200)
             except :
                 return make_response("", 400)
             
-        
+        @self.app.post('/lvd-reonnect-voltage-config')
+        def lvdReconnectConfig() :
+            try :
+                data = request.json
+                vsat = data['vsat']
+                other = data['other']
+                bts = data['bts']
+                # msg = CanDataSimulator()
+                msg = can.Message()
+                msg.arbitration_id = 0x1D43C8E8
+                msg.dlc = 8
+                msg.data = [(vsat & 0xFF), (vsat >> 8), (other & 0xFF), (other >> 8), (bts & 0xFF), (bts >> 8), 1, 1]
+                msg.is_extended_id = True
+                self.linkQueue.put(msg)
+                return make_response("", 200)
+            except :
+                return make_response("", 400)
+
+
         @self.app.post('/system-config')
         def systemConfig() :
             try :
                 data = request.json
                 nominalVoltage = data['nominal_voltage']
-                msg = CanDataSimulator()
-                msg.arbitration_id = 0x1D43C8E8
+                # msg = CanDataSimulator()
+                msg = can.Message()
+                msg.arbitration_id = 0x1D44C8E8
                 msg.dlc = 8
                 msg.data = [(nominalVoltage & 0xFF), (nominalVoltage >> 8), 0, 0, 0, 0]
+                msg.is_extended_id = True
                 self.linkQueue.put(msg)
                 return make_response("", 200)
             except :

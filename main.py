@@ -1,6 +1,8 @@
 import threading
 import queue
 import keyboard
+import can
+from cancallback import CanCallBack
 from dataproviderthread import DataProvider
 from datareaderthread import DataReader, DataCollection
 from time import sleep
@@ -12,12 +14,22 @@ if __name__ == "__main__":
     syncFlag = threading.Condition()
     data = DataCollection()   
     buffer = queue.Queue()
-    reader = DataReader(name="datareader", stopEvent=readerStopEvent, syncFlag=syncFlag, buffer=buffer)
-    data = reader.dataCollection
+    canFilter = [
+        {"can_id": 0x540C840, "can_mask": 0x5D8FF40, "extended": True}
+    ]
+    bus = can.ThreadSafeBus(interface='socketcan', channel='can0', receive_own_messages=False)
+    bus.set_filters(filters=canFilter)
+    listCallback = []
+    canCallBack = CanCallBack()
+    listCallback.append(canCallBack)
+    # reader = DataReader(name="datareader", stopEvent=readerStopEvent, syncFlag=syncFlag, buffer=buffer)
     provider = DataProvider(name="dataprovider", stopEvent=providerStopEvent, syncFlag=syncFlag, buffer=buffer)
+    provider.initBus(bus)
+    provider.setListener(listCallback)
+    data = canCallBack.dataCollection
     server = Server(name="httpserver", data=data)    
     server.link(provider.writeQueue)
-    reader.start()
+    # reader.start()
     provider.start()
     server.start()
     # stopEvent = threading.Event()

@@ -1,9 +1,11 @@
 import threading
 import queue
 import can
+from can import Listener
 from time import sleep
 from can.message import Message
 from multipledispatch import dispatch
+from can.broadcastmanager import ModifiableCyclicTaskABC
 
 class CanDataSimulator() :
     def __init__(self) -> None:
@@ -66,6 +68,8 @@ class DataProvider(threading.Thread) :
         self.canInterface = "socketcan"
         self.canChannel = "can0"
         self.canBitrate = 250000
+        self.bus : can.ThreadSafeBus
+        self.periodicTask : ModifiableCyclicTaskABC
         self.canFilter = [
             {"can_id": 0x540C840, "can_mask": 0x5D8FF40, "extended": True}
         ]
@@ -74,17 +78,34 @@ class DataProvider(threading.Thread) :
             sim = CanBatteryPackSimulatorData(i)
             self.batteryPack.append(sim)
 
-    def initBus(self, canInterface : str, canChannel : str, canBitrate : int, canFilter : list) :
-        self.canInterface = canInterface
-        self.canChannel = canChannel
-        self.canBitrate = canBitrate
-        self.canFilter = canFilter.copy()
+    def initBus(self, bus : can.ThreadSafeBus) :
+        self.bus = bus
+
+    def setListener(self, listener : list[Listener]) :
+        can.Notifier(self.bus, listener)
+        # pass
 
     def link(self, queue : queue.Queue) :
         self.writeQueue = queue
 
     def insertQueue(self, msg : CanDataSimulator) :
         self.writeQueue.put(msg)
+
+    def simple_periodic_send(self, bus : can.Bus):
+        print("Starting to send a message every 200ms for 2s")
+        # msg = can.Message(
+        #     arbitration_id=0x1D41C8E8, data=[160, self.override, 0, 0, 0, 0, 0, 0], is_extended_id=True
+        # )
+        msg = can.Message(
+            arbitration_id=0x1D41C8E8,
+            data=[160, self.override, 0, 0, 0, 0, 0, 0],
+            is_extended_id=True
+        )
+        self.periodicTask = bus.send_periodic(msg, 0.20)
+        if not isinstance(self.periodicTask, can.ModifiableCyclicTaskABC):
+            print("This interface doesn't seem to support modification")
+            self.periodicTask.stop()
+            return
 
     @dispatch(CanDataSimulator)
     def provide(self, flag : CanDataSimulator) :
@@ -113,81 +134,25 @@ class DataProvider(threading.Thread) :
     def provide(self, flag : Message) :
         if self.stopEvent.is_set() :
             return
-        with can.interface.Bus(interface=self.canInterface, channel=self.canChannel, bitrate=self.canBitrate) as bus :
-            bus.set_filters(filters=self.canFilter)
-            # print(bus)
-            inc = 0
-            for msg in bus :
-                if (bus.recv(timeout=0.2)) is None :
-                    break
-                # print(msg)
-                canData = Message()
-                canData.arbitration_id = msg.arbitration_id
-                canData.dlc = msg.dlc
-                canData.data = msg.data.copy()
-                self.buffer.put(canData)
-                with self.syncFlag :
-                    self.syncFlag.notify_all()
-                # for data in msg.data :
-                #     print(type(data))
-                inc += 1
-                # print(inc)
-                # print("incoming data")
-
-            print("exit")
-            # while not self.writeQueue.empty() :
-            #     store : Message = self.writeQueue.get()
-            #     if (store.arbitration_id == 0x1D41C8E8) :
-            #         self.override = store.data[2]
-            #     store.is_extended_id = True
-            #     try:
-            #         bus.send(store)
-            #         print(f"Message sent on {bus.channel_info}")
-            #     except can.CanError:
-            #         print("Message NOT sent")
-            #     sleep(0.1)
-            
-            # canMessage : Message(
-            #     arbitration_id=self.keepAliveId,
-            #     dlc=8,
-            #     data=[160, self.override, 0, 0, 0, 0, 0, 0],
-            #     is_extended_id=True
-            # )
-
-            # try:
-            #     bus.send(canMessage)
-            #     print(f"Message sent on {bus.channel_info}")
-            # except can.CanError:
-            #     print("Message NOT sent")
-            # sleep(0.1)
-        # print("exit with")
-            
-                
-                # print("Id :", hex(store.arbitration_id))
-                # print("Dlc :", store.dlc)
-                # print("Data :")
-                # for data in store.data :
-                #     print(" ", hex(data))
-
-
-        # for batteryPack in self.batteryPack :
-        #     for data in batteryPack.data :
-        #         storage : list = data['data']
-        #         canData = Message()
-        #         canData.arbitration_id = data['id']
-        #         canData.dlc = 8
-        #         canData.data = storage.copy()
-        #         self.buffer.put(canData)
-        #         with self.syncFlag :
-        #             self.syncFlag.notify_all()
-        #         sleep(0.1)
+        while not self.writeQueue.empty() :
+            print("Data from http")
+            canData : Message = self.writeQueue.get()
+            if canData.arbitration_id == 0x1D41C8E8 :
+                print("overwrite override")
+                # self.periodicTask.stop()
+                self.override = canData.data[2]
+                self.periodicTask.modify_data(canData)
+            else :
+                self.bus.send(canData)
+            sleep(0.1)
 
     def run(self) :
+        msg = Message(
+            arbitration_id=0x1D41C8E8,
+            data=[160, self.override, 0, 0, 0, 0, 0, 0],
+            is_extended_id=True
+        )
+        self.simple_periodic_send(self.bus)
         while not self.stopEvent.is_set() :
-            flag  = Message(
-                arbitration_id=1,
-                dlc=8,
-                data=[0,1,2,3,4,5,6,7],
-                is_extended_id=True
-            )
-            self.provide(flag)
+            self.provide(msg)
+            sleep(0.1)

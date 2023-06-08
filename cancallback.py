@@ -1,9 +1,9 @@
-import threading
-import queue
 import copy
 from multipledispatch import dispatch
 from dataproviderthread import CanDataSimulator
 from time import sleep
+from typing import Any
+from can import Listener
 from can.message import Message
 
 class SingleMosfetData() :
@@ -272,13 +272,9 @@ class DataProcess() :
     def getRelay(self, msg : Message) -> int :
         return msg.data[1]
 
-class DataReader(threading.Thread) :
-    def __init__(self, name : str, stopEvent : threading.Event, syncFlag : threading.Condition, buffer : queue.Queue) :
-        threading.Thread.__init__(self, name=name)
-        self.stopEvent : threading.Event = stopEvent
-        self.syncFlag = syncFlag
-        self.buffer : queue.Queue = buffer
-        self.daemon = True
+class CanCallBack(Listener) :
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
         self.pack_base_addr = 0x764C864
         self.mosf_temp_base_addr = 0x763C864
         self.packDataFrame = 0x764C840
@@ -286,59 +282,9 @@ class DataReader(threading.Thread) :
         self.stm32Frame = 0x1D40C8C0
         self.dataCollection = DataCollection()
 
-    @dispatch(CanDataSimulator)
-    def handleMessage(self, msg : CanDataSimulator) :
-        frame = msg.arbitration_id & 0xFFFFFFC0
-        if (frame == self.packDataFrame) :
-            dataProcess = DataProcess()
-            singleBatData = SinglePackData()
-            singleBatData.id = self.pack_base_addr - msg.arbitration_id
-            singleBatData.packVoltage = dataProcess.getPackVoltage(msg)
-            singleBatData.packCurrent = dataProcess.getPackCurrent(msg)
-            singleBatData.packSoc = dataProcess.getPackSoc(msg)
-            self.dataCollection.insertData(singleBatData)
-            # singleBatData.printAll()
-        elif(frame == self.mosfTempFrame) :
-            dataProcess = DataProcess()
-            singleMosfetData = SingleMosfetData()
-            singleMosfetData.id = self.mosf_temp_base_addr - msg.arbitration_id
-            singleMosfetData.topTemp = dataProcess.getTemperature(msg, 3, 1)
-            singleMosfetData.midTemp = dataProcess.getTemperature(msg, 4, 1)
-            singleMosfetData.botTemp = dataProcess.getTemperature(msg, 5, 1)
-            singleMosfetData.cmosTemp = dataProcess.getTemperature(msg, 6, 1)
-            singleMosfetData.dmosTemp = dataProcess.getTemperature(msg, 7, 1)
-            if (msg.data[0] == 0x53) :
-                singleMosfetData.cmos = 1
-                singleMosfetData.dmos = 0
-            elif (msg.data[0] == 0x42) :
-                singleMosfetData.cmos = 0
-                singleMosfetData.dmos = 1
-            elif (msg.data[0] == 0x31) :
-                singleMosfetData.cmos = 1
-                singleMosfetData.dmos = 1
-            elif (msg.data[0] == 0x65) :
-                singleMosfetData.cmos = 0
-                singleMosfetData.dmos = 0
-            self.dataCollection.insertData(singleMosfetData)
-            self.dataCollection.buildPackData()
-            # singleMosfetData.printAll()
-        elif(frame == self.stm32Frame) :
-            dataProcess = DataProcess()
-            stm32Current1 = Stm32Current()
-            stm32SingleData = SingleStm32Data()
-            stm32Current1.number = 1
-            stm32Current1.current = dataProcess.getCurrent(msg, 2, 2)
-            stm32SingleData.insertData(stm32Current1)
-            stm32Current1.number = 2
-            stm32Current1.current = dataProcess.getCurrent(msg, 4, 2)
-            stm32SingleData.insertData(stm32Current1)
-            stm32Current1.number = 3
-            stm32Current1.current = dataProcess.getCurrent(msg, 6, 2)
-            stm32SingleData.insertData(stm32Current1)
-            stm32SingleData.id = 1
-            stm32SingleData.relayState = dataProcess.getRelay(msg)
-            self.dataCollection.insertData(stm32SingleData)
-            self.dataCollection.buildStm32Data()
+    def on_message_received(self, msg: Message) -> None:
+        print(hex(msg.arbitration_id))
+        self.handleMessage(msg)
     
     @dispatch(Message)
     def handleMessage(self, msg : Message) :
@@ -393,25 +339,3 @@ class DataReader(threading.Thread) :
             stm32SingleData.relayState = dataProcess.getRelay(msg)
             self.dataCollection.insertData(stm32SingleData)
             self.dataCollection.buildStm32Data()
-
-    def read(self) :
-        if self.stopEvent.is_set() : 
-            return
-        with self.syncFlag :
-            self.syncFlag.wait()
-            # print("available")
-        while not self.buffer.empty() :
-            # try :
-            # canData : CanDataSimulator = self.buffer.get()
-            canData : Message  = self.buffer.get()
-            # print("Id :", hex(canData.arbitration_id))
-            # print("Length :", canData.dlc)
-            # print("Data:")
-            # for x in canData.data :
-            #     print(" ", hex(x))
-            # self.handleMessage(canData)
-                
-    def run(self) :
-        while not self.stopEvent.is_set() :
-            self.read()
-            
