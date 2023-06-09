@@ -7,6 +7,7 @@ from dataproviderthread import DataProvider
 from datareaderthread import DataReader, DataCollection
 from time import sleep
 from httpserver import Server
+from can.bus import BusABC
 
 if __name__ == "__main__":
     readerStopEvent = threading.Event()
@@ -32,19 +33,12 @@ if __name__ == "__main__":
     # reader.start()
     provider.start()
     server.start()
-    # stopEvent = threading.Event()
-    # buffer = queue.Queue()
-    # canBus = CanBus("canbus", stopEvent)
-    # canBus.configureBus(interface="socketcan", channel="can0", bitrate=250000)
-    # canBus.setBuffer(queue=buffer)
-    # canBus.daemon = True
-    # canBus.start()
     while True :
         if keyboard.is_pressed("q") :
             print("you pressed q")
             break
         sleep(0.1)
-    readerStopEvent.set()
+    # readerStopEvent.set()
     providerStopEvent.set()
     print("Quit")
     # stopEvent.set()

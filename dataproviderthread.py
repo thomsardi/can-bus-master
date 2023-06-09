@@ -5,7 +5,8 @@ from can import Listener
 from time import sleep
 from can.message import Message
 from multipledispatch import dispatch
-from can.broadcastmanager import ModifiableCyclicTaskABC
+from can.broadcastmanager import ModifiableCyclicTaskABC, CyclicSendTaskABC
+from can.interfaces.socketcan.socketcan import CyclicSendTask
 
 class CanDataSimulator() :
     def __init__(self) -> None:
@@ -69,7 +70,9 @@ class DataProvider(threading.Thread) :
         self.canChannel = "can0"
         self.canBitrate = 250000
         self.bus : can.ThreadSafeBus
-        self.periodicTask : ModifiableCyclicTaskABC
+        self.periodicKeepAlive : ModifiableCyclicTaskABC
+        self.periodicWake : list[CyclicSendTaskABC] = []
+        
         self.canFilter = [
             {"can_id": 0x540C840, "can_mask": 0x5D8FF40, "extended": True}
         ]
@@ -91,7 +94,7 @@ class DataProvider(threading.Thread) :
     def insertQueue(self, msg : CanDataSimulator) :
         self.writeQueue.put(msg)
 
-    def simple_periodic_send(self, bus : can.Bus):
+    def keep_alive_periodic_send(self, bus : can.Bus):
         print("Starting to send a message every 200ms for 2s")
         # msg = can.Message(
         #     arbitration_id=0x1D41C8E8, data=[160, self.override, 0, 0, 0, 0, 0, 0], is_extended_id=True
@@ -101,11 +104,28 @@ class DataProvider(threading.Thread) :
             data=[160, self.override, 0, 0, 0, 0, 0, 0],
             is_extended_id=True
         )
-        self.periodicTask = bus.send_periodic(msg, 0.20)
-        if not isinstance(self.periodicTask, can.ModifiableCyclicTaskABC):
+        self.periodicKeepAlive = bus.send_periodic(msg, 0.20)
+        if not isinstance(self.periodicKeepAlive, can.ModifiableCyclicTaskABC):
             print("This interface doesn't seem to support modification")
-            self.periodicTask.stop()
+            self.periodicKeepAlive.stop()
+            
             return
+        
+    def wake_periodic_send(self, bus : can.Bus):
+        print("Starting to send wake message every 200ms for 2s")
+        msgList : list[Message] = []
+        for i in range(1,17,1) :
+            msg = can.Message(
+                arbitration_id=0x12640066 + (i<<8),
+                data=[0x33, 0x63, 0x60, 0x64, 0x64, 0x64, 0x53, 0x64],
+                is_extended_id=True
+            )
+            msgList.append(msg)    
+        
+        for index, element in enumerate(msgList) :
+            task = bus.send_periodic(element, 0.20 , store_task=False)
+            assert isinstance(task, can.CyclicSendTaskABC)
+            self.periodicWake.append(task)
 
     @dispatch(CanDataSimulator)
     def provide(self, flag : CanDataSimulator) :
@@ -141,18 +161,21 @@ class DataProvider(threading.Thread) :
                 print("overwrite override")
                 # self.periodicTask.stop()
                 self.override = canData.data[2]
-                self.periodicTask.modify_data(canData)
+                self.periodicKeepAlive.modify_data(canData)
             else :
                 self.bus.send(canData)
             sleep(0.1)
 
     def run(self) :
         msg = Message(
-            arbitration_id=0x1D41C8E8,
-            data=[160, self.override, 0, 0, 0, 0, 0, 0],
+            arbitration_id=0x12640066,
+            data=[1, 2, 3, 4, 5, 6, 7, 8],
             is_extended_id=True
         )
-        self.simple_periodic_send(self.bus)
+        self.keep_alive_periodic_send(self.bus)
+        self.wake_periodic_send(self.bus)
         while not self.stopEvent.is_set() :
             self.provide(msg)
             sleep(0.1)
+        for task in self.periodicWake :
+            task.stop()

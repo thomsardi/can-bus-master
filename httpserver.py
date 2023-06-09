@@ -114,7 +114,7 @@ class Server(threading.Thread) :
         @self.app.get('/get-data')
         def serveData() :
             response = {
-                "battery-data" : self.data.buildPackData(),
+                "battery_data" : self.data.buildPackData(),
                 "stm32_data" : self.data.buildStm32Data()
             }
             return response

@@ -192,32 +192,73 @@ class DataProcess() :
     
     @dispatch(CanDataSimulator)
     def getPackVoltage(self, msg : CanDataSimulator) -> int :
-        result = abs(self._packVoltageMaxValue - (msg.data[2] + (msg.data[3] << 8))) * 2
+        if len(msg.data) < 8 :
+            return None
+        lowByte = msg.data[2]
+        highByte = msg.data[3]
+        if (lowByte > 0x64) : # if the low byte higher than 100 (0x64)
+            highByte -= 1
+        
+        result = abs(self._packVoltageMaxValue - ((highByte << 8) + lowByte))
         return result
     
     @dispatch(Message)
     def getPackVoltage(self, msg : Message) -> int :
-        result = abs(self._packVoltageMaxValue - (msg.data[2] + (msg.data[3] << 8))) * 2
+        if len(msg.data) < 8 :
+            return None
+        lowByte = msg.data[2]
+        highByte = msg.data[3]
+        if (lowByte > 0x64) : # if the low byte higher than 100 (0x64)
+            highByte -= 1
+        
+        result = abs(self._packVoltageMaxValue - ((highByte << 8) + lowByte))
         return result
     
     @dispatch(CanDataSimulator)
     def getPackCurrent(self, msg : CanDataSimulator) -> int :
-        result = abs(self._packCurrentMaxValue - (msg.data[4] + (msg.data[5] << 8)))
+        if len(msg.data) < 8 :
+            return None
+        lowByte = msg.data[4]
+        highByte = msg.data[5]
+        if (lowByte > 0x64) : # if the low byte higher than 100 (0x64)
+            highByte -= 1
+        
+        result = abs(self._packVoltageMaxValue - ((highByte << 8) + lowByte))
         return result
     
     @dispatch(Message)
     def getPackCurrent(self, msg : Message) -> int :
-        result = abs(self._packCurrentMaxValue - (msg.data[4] + (msg.data[5] << 8)))
+        if len(msg.data) < 8 :
+            return None
+        lowByte = msg.data[4]
+        highByte = msg.data[5]
+        if (lowByte > 0x64) : # if the low byte higher than 100 (0x64)
+            highByte -= 1
+        
+        result = abs(self._packVoltageMaxValue - ((highByte << 8) + lowByte))
         return result
     
     @dispatch(CanDataSimulator)
     def getPackSoc(self, msg : CanDataSimulator) -> int :
-        result = abs(self._packSocMaxValue - (msg.data[6] + (msg.data[7] << 8)))
+        if len(msg.data) < 8 :
+            return None
+        lowByte = msg.data[6]
+        highByte = msg.data[7]
+        if (lowByte > 0x64) : # if the low byte higher than 100 (0x64)
+            highByte -= 1
+        
+        result = abs(self._packVoltageMaxValue - ((highByte << 8) + lowByte))
         return result
     
     @dispatch(Message)
     def getPackSoc(self, msg : Message) -> int :
-        result = abs(self._packSocMaxValue - (msg.data[6] + (msg.data[7] << 8)))
+        if len(msg.data) < 8 :
+            return None
+        lowByte = msg.data[6]
+        highByte = msg.data[7]
+        if (lowByte > 0x64) : # if the low byte higher than 100 (0x64)
+            highByte -= 1
+        result = abs(self._packVoltageMaxValue - ((highByte << 8) + lowByte))
         return result
     
     @dispatch(CanDataSimulator, int, int, int)
@@ -283,7 +324,7 @@ class CanCallBack(Listener) :
         self.dataCollection = DataCollection()
 
     def on_message_received(self, msg: Message) -> None:
-        print(hex(msg.arbitration_id))
+        # print(hex(msg.arbitration_id))
         self.handleMessage(msg)
     
     @dispatch(Message)
