@@ -75,7 +75,7 @@ class Server(threading.Thread) :
             except :
                 return make_response("", 400)
             
-        @self.app.post('/lvd-reonnect-voltage-config')
+        @self.app.post('/lvd-reconnect-voltage-config')
         def lvdReconnectConfig() :
             try :
                 data = request.json

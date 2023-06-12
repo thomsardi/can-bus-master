@@ -1,6 +1,6 @@
 import threading
 import queue
-import keyboard
+# import keyboard
 import can
 from cancallback import CanCallBack
 from dataproviderthread import DataProvider
@@ -34,9 +34,9 @@ if __name__ == "__main__":
     provider.start()
     server.start()
     while True :
-        if keyboard.is_pressed("q") :
-            print("you pressed q")
-            break
+        # if keyboard.is_pressed("q") :
+        #     print("you pressed q")
+        #     break
         sleep(0.1)
     # readerStopEvent.set()
     providerStopEvent.set()

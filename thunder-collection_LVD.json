@@ -1,0 +1,123 @@
+{
+    "client": "Thunder Client",
+    "collectionName": "LVD",
+    "dateExported": "2023-06-12T03:54:15.715Z",
+    "version": "1.1",
+    "folders": [],
+    "requests": [
+        {
+            "_id": "71ae9062-edc3-4468-a75b-4bc98bd7d8cd",
+            "colId": "911c9e77-3dc3-489e-ae1a-63805a69ba50",
+            "containerId": "",
+            "name": "get-data",
+            "url": "get-data",
+            "method": "GET",
+            "sortNum": 10000,
+            "created": "2023-06-12T03:44:33.767Z",
+            "modified": "2023-06-12T03:44:43.078Z",
+            "headers": [],
+            "params": [],
+            "tests": []
+        },
+        {
+            "_id": "7f82f119-e418-447f-9b50-7d4045eb7d9d",
+            "colId": "911c9e77-3dc3-489e-ae1a-63805a69ba50",
+            "containerId": "",
+            "name": "lvd-low-voltage-config",
+            "url": "lvd-low-voltage-config",
+            "method": "POST",
+            "sortNum": 30000,
+            "created": "2023-06-12T03:45:34.247Z",
+            "modified": "2023-06-12T03:46:38.304Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n  \"vsat\" : 4600,\n  \"bts\" : 4700,\n  \"other\" : 4600\n}",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "59950a0e-0194-4286-8646-686e96d53fee",
+            "colId": "911c9e77-3dc3-489e-ae1a-63805a69ba50",
+            "containerId": "",
+            "name": "lvd-reconnect-voltage-config",
+            "url": "lvd-reconnect-voltage-config",
+            "method": "POST",
+            "sortNum": 40000,
+            "created": "2023-06-12T03:46:44.614Z",
+            "modified": "2023-06-12T03:47:27.163Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n  \"vsat\" : 4700,\n  \"bts\" : 4800,\n  \"other\" : 4700\n}",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "f1b8905b-02b9-4136-8092-634dabe85c6f",
+            "colId": "911c9e77-3dc3-489e-ae1a-63805a69ba50",
+            "containerId": "",
+            "name": "system-config",
+            "url": "system-config",
+            "method": "POST",
+            "sortNum": 50000,
+            "created": "2023-06-12T03:50:39.177Z",
+            "modified": "2023-06-12T03:51:48.618Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n  \"nominal_voltage\" : 4800\n}",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "705e5942-4799-44a8-839a-b393078849fa",
+            "colId": "911c9e77-3dc3-489e-ae1a-63805a69ba50",
+            "containerId": "",
+            "name": "relay",
+            "url": "relay",
+            "method": "POST",
+            "sortNum": 60000,
+            "created": "2023-06-12T03:52:38.257Z",
+            "modified": "2023-06-12T03:53:58.640Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n  \"relay\" : 6\n}",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "831dd7f2-da24-428e-81af-e1b5269a4313",
+            "colId": "911c9e77-3dc3-489e-ae1a-63805a69ba50",
+            "containerId": "",
+            "name": "override",
+            "url": "override",
+            "method": "POST",
+            "sortNum": 70000,
+            "created": "2023-06-12T03:53:22.983Z",
+            "modified": "2023-06-12T03:54:05.482Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n  \"override\" : 0\n}",
+                "form": []
+            },
+            "tests": []
+        }
+    ],
+    "settings": {
+        "options": {
+            "baseUrl": "http://192.168.2.125:8000/"
+        }
+    }
+}
