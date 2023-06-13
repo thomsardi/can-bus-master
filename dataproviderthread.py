@@ -99,9 +99,10 @@ class DataProvider(threading.Thread) :
         # msg = can.Message(
         #     arbitration_id=0x1D41C8E8, data=[160, self.override, 0, 0, 0, 0, 0, 0], is_extended_id=True
         # )
+        uniqueId = 160
         msg = can.Message(
             arbitration_id=0x1D41C8E8,
-            data=[160, self.override, 0, 0, 0, 0, 0, 0],
+            data=[(uniqueId & 0xFF), (uniqueId >> 8), self.override, 0, 0, 0, 0, 0],
             is_extended_id=True
         )
         self.periodicKeepAlive = bus.send_periodic(msg, 0.20)
@@ -114,7 +115,7 @@ class DataProvider(threading.Thread) :
     def wake_periodic_send(self, bus : can.Bus):
         print("Starting to send wake message every 200ms for 2s")
         msgList : list[Message] = []
-        for i in range(1,17,1) :
+        for i in range(1,65,1) :
             msg = can.Message(
                 arbitration_id=0x12640066 + (i<<8),
                 data=[0x33, 0x63, 0x60, 0x64, 0x64, 0x64, 0x53, 0x64],
