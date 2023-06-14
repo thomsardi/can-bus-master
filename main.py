@@ -4,7 +4,8 @@ import queue
 import can
 from cancallback import CanCallBack
 from dataproviderthread import DataProvider
-from datareaderthread import DataReader, DataCollection
+from cancallback import DataCollection
+# from datareaderthread import DataReader, DataCollection
 from time import sleep
 from httpserver import Server
 from can.bus import BusABC
@@ -33,10 +34,18 @@ if __name__ == "__main__":
     # reader.start()
     provider.start()
     server.start()
+    inc = 0
     while True :
         # if keyboard.is_pressed("q") :
         #     print("you pressed q")
         #     break
+        if(inc > 50) :
+            print("cleanup routine")
+            # canCallBack.lock.acquire()
+            data.cleanUp()
+            # canCallBack.lock.release()
+            inc = 0
+        inc += 1
         sleep(0.1)
     # readerStopEvent.set()
     providerStopEvent.set()

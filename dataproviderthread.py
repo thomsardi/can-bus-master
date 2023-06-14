@@ -72,6 +72,7 @@ class DataProvider(threading.Thread) :
         self.bus : can.ThreadSafeBus
         self.periodicKeepAlive : ModifiableCyclicTaskABC
         self.periodicWake : list[CyclicSendTaskABC] = []
+        self.lock = threading.Lock()
         
         self.canFilter = [
             {"can_id": 0x540C840, "can_mask": 0x5D8FF40, "extended": True}
@@ -105,7 +106,7 @@ class DataProvider(threading.Thread) :
             data=[(uniqueId & 0xFF), (uniqueId >> 8), self.override, 0, 0, 0, 0, 0],
             is_extended_id=True
         )
-        self.periodicKeepAlive = bus.send_periodic(msg, 0.20)
+        self.periodicKeepAlive = bus.send_periodic(msg, 0.6)
         if not isinstance(self.periodicKeepAlive, can.ModifiableCyclicTaskABC):
             print("This interface doesn't seem to support modification")
             self.periodicKeepAlive.stop()
@@ -115,7 +116,7 @@ class DataProvider(threading.Thread) :
     def wake_periodic_send(self, bus : can.Bus):
         print("Starting to send wake message every 200ms for 2s")
         msgList : list[Message] = []
-        for i in range(1,65,1) :
+        for i in range(1,33,1) :
             msg = can.Message(
                 arbitration_id=0x12640066 + (i<<8),
                 data=[0x33, 0x63, 0x60, 0x64, 0x64, 0x64, 0x53, 0x64],
@@ -124,7 +125,7 @@ class DataProvider(threading.Thread) :
             msgList.append(msg)    
         
         for index, element in enumerate(msgList) :
-            task = bus.send_periodic(element, 0.20 , store_task=False)
+            task = bus.send_periodic(element, 0.50 + (index*0.01), store_task=False)
             assert isinstance(task, can.CyclicSendTaskABC)
             self.periodicWake.append(task)
 

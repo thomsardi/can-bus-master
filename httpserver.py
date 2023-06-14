@@ -1,6 +1,7 @@
 import threading
 from flask import Flask, request, make_response
-from datareaderthread import DataCollection
+# from datareaderthread import DataCollection
+from cancallback import DataCollection
 import queue
 from dataproviderthread import CanDataSimulator
 import can
@@ -47,7 +48,7 @@ class Server(threading.Thread) :
                 value = data['relay']
                 # msg = CanDataSimulator()
                 msg = can.Message()
-                msg.arbitration_id = 0x1D40C8E8
+                msg.arbitration_id = 0x1D41C8E7
                 msg.dlc = 8
                 msg.data = [value, 1, 1, 1, 1, 1, 1, 1]
                 msg.is_extended_id = True
@@ -66,7 +67,7 @@ class Server(threading.Thread) :
                 bts = data['bts']
                 # msg = CanDataSimulator()
                 msg = can.Message()
-                msg.arbitration_id = 0x1D42C8E8
+                msg.arbitration_id = 0x1D41C8E6
                 msg.dlc = 8
                 msg.data = [(vsat & 0xFF), (vsat >> 8), (other & 0xFF), (other >> 8), (bts & 0xFF), (bts >> 8), 0, 0]
                 msg.is_extended_id = True
@@ -84,7 +85,7 @@ class Server(threading.Thread) :
                 bts = data['bts']
                 # msg = CanDataSimulator()
                 msg = can.Message()
-                msg.arbitration_id = 0x1D43C8E8
+                msg.arbitration_id = 0x1D41C8E5
                 msg.dlc = 8
                 msg.data = [(vsat & 0xFF), (vsat >> 8), (other & 0xFF), (other >> 8), (bts & 0xFF), (bts >> 8), 1, 1]
                 msg.is_extended_id = True
@@ -101,7 +102,7 @@ class Server(threading.Thread) :
                 nominalVoltage = data['nominal_voltage']
                 # msg = CanDataSimulator()
                 msg = can.Message()
-                msg.arbitration_id = 0x1D44C8E8
+                msg.arbitration_id = 0x1D41C8E4
                 msg.dlc = 8
                 msg.data = [(nominalVoltage & 0xFF), (nominalVoltage >> 8), 0, 0, 0, 0]
                 msg.is_extended_id = True
@@ -113,9 +114,27 @@ class Server(threading.Thread) :
 
         @self.app.get('/get-data')
         def serveData() :
+            self.data.packCalculate()
             response = {
                 "battery_data" : self.data.buildPackData(),
                 "stm32_data" : self.data.buildStm32Data()
+            }
+            return response
+        @self.app.get('/get-param')
+        def getParam() :
+            lowVoltage : dict = {
+                "other" : self.data.lowVoltageOther,
+                "bts" : self.data.lowVoltageBts,
+                "vsat" : self.data.lowVoltageVsat
+            }
+            reconnectVoltage : dict = {
+                "other" : self.data.reconnectVoltageOther,
+                "bts" : self.data.reconnectVoltageBts,
+                "vsat" : self.data.reconnectVoltageVsat
+            }
+            response = {
+                "low_voltage" : lowVoltage,
+                "reconnect_voltage" : reconnectVoltage
             }
             return response
     
