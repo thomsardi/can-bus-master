@@ -11,8 +11,6 @@ from httpserver import Server
 from can.bus import BusABC
 
 if __name__ == "__main__":
-    readerStopEvent = threading.Event()
-    providerStopEvent = threading.Event()
     syncFlag = threading.Condition()
     data = DataCollection()   
     buffer = queue.Queue()
@@ -25,7 +23,7 @@ if __name__ == "__main__":
     canCallBack = CanCallBack()
     listCallback.append(canCallBack)
     # reader = DataReader(name="datareader", stopEvent=readerStopEvent, syncFlag=syncFlag, buffer=buffer)
-    provider = DataProvider(name="dataprovider", stopEvent=providerStopEvent, syncFlag=syncFlag, buffer=buffer)
+    provider = DataProvider(name="dataprovider", syncFlag=syncFlag, buffer=buffer)
     provider.initBus(bus)
     provider.setListener(listCallback)
     data = canCallBack.dataCollection
@@ -48,7 +46,7 @@ if __name__ == "__main__":
         inc += 1
         sleep(0.1)
     # readerStopEvent.set()
-    providerStopEvent.set()
+    provider.stop()
     print("Quit")
     # stopEvent.set()
 

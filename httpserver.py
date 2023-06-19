@@ -36,9 +36,15 @@ class Server(threading.Thread) :
                 msg.data = [(uniqueId & 0xFF), (uniqueId >> 8), value, 0, 0, 0, 0, 0]
                 msg.is_extended_id = True
                 self.linkQueue.put(msg)
-                return make_response("", 200)
+                response = {
+                    "status" : 1
+                }
+                return make_response(response, 200)
             except :
-                return make_response("", 400)
+                response = {
+                    "status" : 0
+                }
+                return make_response(response, 400)
             
         
         @self.app.post('/relay')
@@ -53,9 +59,15 @@ class Server(threading.Thread) :
                 msg.data = [value, 1, 1, 1, 1, 1, 1, 1]
                 msg.is_extended_id = True
                 self.linkQueue.put(msg)
-                return make_response("", 200)
+                response = {
+                    "status" : 1
+                }
+                return make_response(response, 200)
             except :
-                return make_response("", 400)
+                response = {
+                    "status" : 0
+                }
+                return make_response(response, 400)
             
         
         @self.app.post('/lvd-low-voltage-config')
@@ -72,9 +84,15 @@ class Server(threading.Thread) :
                 msg.data = [(vsat & 0xFF), (vsat >> 8), (other & 0xFF), (other >> 8), (bts & 0xFF), (bts >> 8), 0, 0]
                 msg.is_extended_id = True
                 self.linkQueue.put(msg)
-                return make_response("", 200)
+                response = {
+                    "status" : 1
+                }
+                return make_response(response, 200)
             except :
-                return make_response("", 400)
+                response = {
+                    "status" : 0
+                }
+                return make_response(response, 400)
             
         @self.app.post('/lvd-reconnect-voltage-config')
         def lvdReconnectConfig() :
@@ -90,9 +108,15 @@ class Server(threading.Thread) :
                 msg.data = [(vsat & 0xFF), (vsat >> 8), (other & 0xFF), (other >> 8), (bts & 0xFF), (bts >> 8), 1, 1]
                 msg.is_extended_id = True
                 self.linkQueue.put(msg)
-                return make_response("", 200)
+                response = {
+                    "status" : 1
+                }
+                return make_response(response, 200)
             except :
-                return make_response("", 400)
+                response = {
+                    "status" : 0
+                }
+                return make_response(response, 400)
 
 
         @self.app.post('/system-config')
@@ -107,9 +131,15 @@ class Server(threading.Thread) :
                 msg.data = [(nominalVoltage & 0xFF), (nominalVoltage >> 8), 0, 0, 0, 0]
                 msg.is_extended_id = True
                 self.linkQueue.put(msg)
-                return make_response("", 200)
+                response = {
+                    "status" : 1
+                }
+                return make_response(response, 200)
             except :
-                return make_response("", 400)
+                response = {
+                    "status" : 0
+                }
+                return make_response(response, 400)
             
 
         @self.app.get('/get-data')

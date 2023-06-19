@@ -56,9 +56,9 @@ class CanBatteryPackSimulatorData() :
             self.data.append(dataPair)
 
 class DataProvider(threading.Thread) :
-    def __init__(self, name : str, stopEvent : threading.Event, syncFlag : threading.Condition, buffer : queue.Queue) :
+    def __init__(self, name : str, syncFlag : threading.Condition, buffer : queue.Queue) :
         threading.Thread.__init__(self, name=name)
-        self.stopEvent : threading.Event = stopEvent
+        self.stopEvent = threading.Event()
         self.syncFlag = syncFlag
         self.buffer : queue.Queue = buffer
         self.daemon = True
@@ -66,13 +66,10 @@ class DataProvider(threading.Thread) :
         self.writeQueue = queue.Queue()
         self.override : int = 0
         self.keepAliveId = 0x1D41C8E8
-        self.canInterface = "socketcan"
-        self.canChannel = "can0"
-        self.canBitrate = 250000
-        self.bus : can.ThreadSafeBus
-        self.periodicKeepAlive : ModifiableCyclicTaskABC
+        self.bus : can.ThreadSafeBus = None
+        self.periodicKeepAlive : ModifiableCyclicTaskABC = None
         self.periodicWake : list[CyclicSendTaskABC] = []
-        self.lock = threading.Lock()
+        self.listenerList : list[Listener] = []
         
         self.canFilter = [
             {"can_id": 0x540C840, "can_mask": 0x5D8FF40, "extended": True}
@@ -86,6 +83,7 @@ class DataProvider(threading.Thread) :
         self.bus = bus
 
     def setListener(self, listener : list[Listener]) :
+        self.listenerList = listener
         can.Notifier(self.bus, listener)
         # pass
 
@@ -96,7 +94,7 @@ class DataProvider(threading.Thread) :
         self.writeQueue.put(msg)
 
     def keep_alive_periodic_send(self, bus : can.Bus):
-        print("Starting to send a message every 200ms for 2s")
+        print("Starting to send a keep alive message every 600ms")
         # msg = can.Message(
         #     arbitration_id=0x1D41C8E8, data=[160, self.override, 0, 0, 0, 0, 0, 0], is_extended_id=True
         # )
@@ -110,11 +108,10 @@ class DataProvider(threading.Thread) :
         if not isinstance(self.periodicKeepAlive, can.ModifiableCyclicTaskABC):
             print("This interface doesn't seem to support modification")
             self.periodicKeepAlive.stop()
-            
             return
         
     def wake_periodic_send(self, bus : can.Bus):
-        print("Starting to send wake message every 200ms for 2s")
+        print("Starting to send wake message every 500ms")
         msgList : list[Message] = []
         for i in range(1,33,1) :
             msg = can.Message(
@@ -159,6 +156,7 @@ class DataProvider(threading.Thread) :
         while not self.writeQueue.empty() :
             print("Data from http")
             canData : Message = self.writeQueue.get()
+            self.writeQueue.task_done()
             if canData.arbitration_id == 0x1D41C8E8 :
                 print("overwrite override")
                 # self.periodicTask.stop()
@@ -169,6 +167,14 @@ class DataProvider(threading.Thread) :
             sleep(0.1)
 
     def run(self) :
+        self.stopEvent.clear()
+        if self.bus is None :
+            print("Bus is not yet initialized, call the initBus method, and set the listener / callback")
+            print("exiting the thread")
+            for listener in self.listenerList :
+                can.Notifier.remove_listener(listener=listener)
+            self.stopEvent.set()
+            return
         msg = Message(
             arbitration_id=0x12640066,
             data=[1, 2, 3, 4, 5, 6, 7, 8],
@@ -181,3 +187,8 @@ class DataProvider(threading.Thread) :
             sleep(0.1)
         for task in self.periodicWake :
             task.stop()
+        self.periodicWake.clear()
+        self.periodicKeepAlive.stop()        
+
+    def stop(self) :
+        self.stopEvent.set()
