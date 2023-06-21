@@ -67,10 +67,17 @@ class Stm32Current() :
 class SingleStm32Data() :
     def __init__(self) -> None:
         self.id : int = 0
+        self.firmwareVersion : int = 0
         self.relayState : int = 0
         self.current : list[Stm32Current] = []
 
     def insertData(self, data : Stm32Current) :
+        """
+        Insert data, overwrite existing element if it is already exist, if not it will add new element
+
+        Args:
+            data (Stm32Current) : Stm32Current object
+        """
         store = copy.deepcopy(data)
         for index, element in enumerate(self.current) :
             if element.number == store.number :
@@ -85,6 +92,12 @@ class SingleStm32Data() :
         #     pass
         
     def deleteData(self, number : int) :
+        """
+        Find the existing number and delete the data
+
+        Args:
+            number (int) : number to search
+        """
         for index, element in enumerate(self.current) :
             if element.number == number :
                 self.current.remove(index)
@@ -98,6 +111,9 @@ class SingleStm32Data() :
             print("Current :", element.current)
 
 class DataCollection() :
+    """
+    Collection of data, consist of SinglePackData, SingleMosfetData and SingleStm32Data
+    """
     def __init__(self) -> None:
         self.packData : list[SinglePackData] = []
         self.mosfetData : list[SingleMosfetData] = []
@@ -117,6 +133,12 @@ class DataCollection() :
     
     @dispatch(SinglePackData)
     def insertData(self, data : SinglePackData) :
+        """
+        Insert data of SinglePackData, overwrite existing data if any or add new element
+
+        Args:
+            data (SinglePackData) : SinglePackData object to be insert into
+        """
         store = copy.deepcopy(data)
         for index, element in enumerate(self.packData) :
             if element.id == store.id :
@@ -125,13 +147,19 @@ class DataCollection() :
                 self.packData[index].packVoltage = store.packVoltage
                 self.packData[index].packCurrent = store.packCurrent
                 self.packData[index].packSoc = store.packSoc
-                self.packData[index].incCnt()
+                self.packData[index].incCnt() #increment the counter to indicate that the data was updated
                 return
-        store.incCnt()
+        store.incCnt() #increment the counter to indicate that the data was updated
         self.packData.append(store)
 
     @dispatch(SingleMosfetData)
     def insertData(self, data : SingleMosfetData) :
+        """
+        Insert data of SingleMosfetData, overwrite existing data if any or add new element
+
+        Args:
+            data (SingleMosfetData) : SingleMosfetData object to be insert into
+        """
         store = copy.deepcopy(data)
         for index, element in enumerate(self.mosfetData) :
             if element.id == store.id :
@@ -144,20 +172,33 @@ class DataCollection() :
                 self.mosfetData[index].botTemp = store.botTemp
                 self.mosfetData[index].cmosTemp = store.cmosTemp
                 self.mosfetData[index].dmosTemp = store.dmosTemp
-                self.mosfetData[index].incCnt()
+                self.mosfetData[index].incCnt() #increment the counter to indicate that the data was updated
                 return
-        store.incCnt()
+        store.incCnt() #increment the counter to indicate that the data was updated
         self.mosfetData.append(store)
 
     @dispatch(SingleStm32Data)
     def insertData(self, data : SingleStm32Data) :
+        """
+        Insert data of SingleStm32Data, overwrite existing data if any or add new element
+
+        Args:
+            data (SingleStm32Data) : SingleStm32Data object to be insert into
+        """
         store = copy.deepcopy(data)
         self.stm32Data.id = store.id
+        self.stm32Data.firmwareVersion = store.firmwareVersion
         self.stm32Data.relayState = store.relayState
-        self.stm32Data.current.clear()
-        self.stm32Data.current = store.current.copy()
+        self.stm32Data.current.clear() #clear the old data 
+        self.stm32Data.current = store.current.copy() #replace with latest data
 
     def buildPackData(self) -> dict:
+        """
+        Build Pack Data into json format
+
+        Return:
+            dict data of pack data and mosfet data
+        """
         dataList : list[dict] = []
         
         for packData in self.packData :
@@ -191,6 +232,12 @@ class DataCollection() :
         return output
 
     def deleteData(self, id : int) :
+        """
+        Delete the data of the existing id
+
+        Args:
+            id (int) : id to search
+        """
         for index, element in enumerate(self.packData) :
             if element.id == id :
                 self.packData.remove(index)
@@ -201,6 +248,12 @@ class DataCollection() :
                 break
     
     def buildStm32Data(self) -> list :
+        """
+        Build STM32 Data into json format
+
+        Return:
+            list data of STM32 Data
+        """
         dataList = []
         
         dataCurrentList : list[dict] = []
@@ -213,6 +266,7 @@ class DataCollection() :
 
         stm32Dict = {
             "id" : self.stm32Data.id,
+            "firmware_version" : self.stm32Data.firmwareVersion,
             "stm32_current" : dataCurrentList,
             "stm32_relay" : self.stm32Data.relayState
         }
@@ -221,6 +275,12 @@ class DataCollection() :
         return dataList
 
     def buildData(self) -> dict:
+        """
+        Build data into dict format
+
+        Return:
+            dict of pack data and stm32 data
+        """
         result = {
             "battery_data" : self.buildPackData(),
             "stm32_data" : self.buildStm32Data()
@@ -228,6 +288,11 @@ class DataCollection() :
         return result
 
     def packCalculate(self) :
+        """
+        Calculate pack info such as average voltage, average soc, total current, total battery, total active battery
+        & total inactive battery. This method has to be called before using value above to ensure that the values properly
+        updated
+        """
         totalVoltage = 0
         averageVoltage = 0
         totalCurrent = 0
@@ -258,10 +323,19 @@ class DataCollection() :
         self.totalCurrent = totalCurrent
 
     def clearAll(self) :
+        """
+        Clear all the data
+        """
         self.packData.clear()
         self.mosfetData.clear()
 
     def cleanUp(self) :
+        """
+        Provide a cleanup method to automatically delete non updated data, this method will check on 
+        value changed counter. When the counter value doesn't change for a certain amount of time, the data get
+        deleted. Calling this method too fast will result in data get deleted too soon, use a reasonable timing.
+        E.g the data get updated every 1s, don't call this method < 1s 
+        """
         # print("Begin")
         for index, pack in enumerate(self.packData) :
             # print("Pack Info")
@@ -291,6 +365,9 @@ class DataCollection() :
             
 
 class DataProcess() :
+    """
+    Helper to convert can bus message into some value
+    """
     def __init__(self) -> None:
         self._packVoltageMaxValue = 25700
         self._packCurrentMaxValue = 25700
@@ -310,12 +387,18 @@ class DataProcess() :
     
     @dispatch(Message)
     def getPackVoltage(self, msg : Message) -> int :
+        """
+        Get the pack voltage from can bus message
+
+        Args:
+            msg (Message) : can bus message
+        """
         if len(msg.data) < 8 :
             return None
         lowByte = msg.data[2]
         highByte = msg.data[3]
         if (lowByte > 0x64) : # if the low byte higher than 100 (0x64)
-            highByte -= 1
+            highByte -= 1 #decrease highbyte by 1
         
         result = abs(self._packVoltageMaxValue - ((highByte << 8) + lowByte))
         return result
@@ -334,6 +417,12 @@ class DataProcess() :
     
     @dispatch(Message)
     def getPackCurrent(self, msg : Message) -> int :
+        """
+        Get the pack current from can bus message
+
+        Args:
+            msg (Message) : can bus message
+        """
         if len(msg.data) < 8 :
             return None
         lowByte = msg.data[4]
@@ -358,6 +447,12 @@ class DataProcess() :
     
     @dispatch(Message)
     def getPackSoc(self, msg : Message) -> int :
+        """
+        Get the pack soc from can bus message
+
+        Args:
+            msg (Message) : can bus message
+        """
         if len(msg.data) < 8 :
             return None
         lowByte = msg.data[6]
@@ -380,6 +475,15 @@ class DataProcess() :
     
     @dispatch(Message, int, int, int)
     def getTemperature(self, msg : Message, startIndex : int, length : int, maxValue : int = 100) -> int :
+        """
+        Get the temperature from can bus message
+
+        Args:
+            msg (Message) : can bus message
+            startIndex (int) : start index of can bus data frame
+            length (int) : number of data to get
+            maxValue (int) : max value as constant for calculation
+        """
         result = 0
         raw = 0
         if (len(msg.data) < 8) :
@@ -404,6 +508,14 @@ class DataProcess() :
     
     @dispatch(Message, int, int)
     def getCurrent(self, msg : Message, startIndex : int, length : int) -> int :
+        """
+        Get the current of stm32 from can bus message
+
+        Args:
+            msg (Message) : can bus message
+            startIndex (int) : start index of the can bus data frame
+            length (int) : number of data to get
+        """
         result = 0
         raw = 0
         if (len(msg.data) < 8) :
@@ -421,9 +533,18 @@ class DataProcess() :
     
     @dispatch(Message)
     def getRelay(self, msg : Message) -> int :
+        """
+        Get relay value from can bus data
+
+        Args:
+            msg (Message) : can bus message frame
+        """
         return msg.data[1]
 
 class CanCallBack(Listener) :
+    """
+    Listener for can bus
+    """
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.pack_base_addr = 0x764C864
@@ -438,17 +559,26 @@ class CanCallBack(Listener) :
         self.dataCollection = DataCollection()
 
     def on_message_received(self, msg: Message) -> None:
-        # print(hex(msg.arbitration_id))
+        """
+        Execute every time the can bus line receiving data
+        """
+        print(hex(msg.arbitration_id))
         self.handleMessage(msg)
     
     @dispatch(Message)
     def handleMessage(self, msg : Message) :
-        frame = msg.arbitration_id & 0xFFFFFFC0
+        """
+        Handle and parse the can bus message
+
+        Args:
+            msg (Message) : can bus message
+        """
+        frame = msg.arbitration_id & 0xFFFFFFC0 #zero'ed the id byte
         if(len(msg.data) < 8) :
             return
         # print("hex and :", hex(frame))
         # self.lock.acquire()
-        if (frame == self.packDataFrame) :
+        if (frame == self.packDataFrame) : #if the can message frame is pack data frame
             dataProcess = DataProcess()
             singleBatData = SinglePackData()
             singleBatData.id = self.pack_base_addr - msg.arbitration_id
@@ -459,7 +589,7 @@ class CanCallBack(Listener) :
             self.dataCollection.insertData(singleBatData)
             print(f"pack data id {singleBatData.id} updated")
             # singleBatData.printAll()
-        elif(frame == self.mosfTempFrame) :
+        elif(frame == self.mosfTempFrame) : #if the can message frame is mosfet data frame
             dataProcess = DataProcess()
             singleMosfetData = SingleMosfetData()
             singleMosfetData.id = self.mosf_temp_base_addr - msg.arbitration_id
@@ -485,10 +615,11 @@ class CanCallBack(Listener) :
             print(f"mosfet data id {singleMosfetData.id} updated")
             # self.dataCollection.buildPackData()
             # singleMosfetData.printAll()
-        elif(msg.arbitration_id == self.stm32CurrentFrame) :
+        elif(msg.arbitration_id == self.stm32CurrentFrame) : #if the can message frame is stm32 data frame
             dataProcess = DataProcess()
             stm32Current1 = Stm32Current()
             stm32SingleData = SingleStm32Data()
+            stm32SingleData.firmwareVersion = msg.data[0]
             stm32Current1.number = 1
             stm32Current1.current = dataProcess.getCurrent(msg, 2, 2)
             stm32SingleData.insertData(stm32Current1)
@@ -503,12 +634,12 @@ class CanCallBack(Listener) :
             self.dataCollection.insertData(stm32SingleData)
             # self.dataCollection.buildStm32Data()
             print("stm32 current data updated")
-        elif(msg.arbitration_id == self.stm32LowVoltageParamFrame) :
+        elif(msg.arbitration_id == self.stm32LowVoltageParamFrame) : #if the can message frame is low voltage param frame
             self.dataCollection.lowVoltageVsat = (msg.data[1] << 8) + msg.data[0]
             self.dataCollection.lowVoltageOther = (msg.data[3] << 8) + msg.data[2]
             self.dataCollection.lowVoltageBts = (msg.data[5] << 8) + msg.data[4]
             print("stm32 low voltage parameter updated")
-        elif(msg.arbitration_id == self.stm32ReconnectVoltageParamFrame) : 
+        elif(msg.arbitration_id == self.stm32ReconnectVoltageParamFrame) : #if the can message frame is reconnect voltage param frame
             self.dataCollection.reconnectVoltageVsat = (msg.data[1] << 8) + msg.data[0]
             self.dataCollection.reconnectVoltageOther = (msg.data[3] << 8) + msg.data[2]
             self.dataCollection.reconnectVoltageBts = (msg.data[5] << 8) + msg.data[4]

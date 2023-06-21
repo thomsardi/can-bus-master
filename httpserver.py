@@ -37,12 +37,16 @@ class Server(threading.Thread) :
                 msg.is_extended_id = True
                 self.linkQueue.put(msg)
                 response = {
-                    "status" : 1
+                    "code": "200",
+                    "msg": "SEND_SUCCESS",
+                    "status": True
                 }
                 return make_response(response, 200)
             except :
                 response = {
-                    "status" : 0
+                    "code": "400",
+                    "msg": "BAD_REQUEST",
+                    "status": False
                 }
                 return make_response(response, 400)
             
@@ -60,12 +64,16 @@ class Server(threading.Thread) :
                 msg.is_extended_id = True
                 self.linkQueue.put(msg)
                 response = {
-                    "status" : 1
+                    "code": "200",
+                    "msg": "SEND_SUCCESS",
+                    "status": True
                 }
                 return make_response(response, 200)
             except :
                 response = {
-                    "status" : 0
+                    "code": "400",
+                    "msg": "BAD_REQUEST",
+                    "status": False
                 }
                 return make_response(response, 400)
             
@@ -85,12 +93,16 @@ class Server(threading.Thread) :
                 msg.is_extended_id = True
                 self.linkQueue.put(msg)
                 response = {
-                    "status" : 1
+                    "code": "200",
+                    "msg": "SEND_SUCCESS",
+                    "status": True
                 }
                 return make_response(response, 200)
             except :
                 response = {
-                    "status" : 0
+                    "code": "400",
+                    "msg": "BAD_REQUEST",
+                    "status": False
                 }
                 return make_response(response, 400)
             
@@ -109,12 +121,16 @@ class Server(threading.Thread) :
                 msg.is_extended_id = True
                 self.linkQueue.put(msg)
                 response = {
-                    "status" : 1
+                    "code": "200",
+                    "msg": "SEND_SUCCESS",
+                    "status": True
                 }
                 return make_response(response, 200)
             except :
                 response = {
-                    "status" : 0
+                    "code": "400",
+                    "msg": "BAD_REQUEST",
+                    "status": False
                 }
                 return make_response(response, 400)
 
@@ -132,12 +148,16 @@ class Server(threading.Thread) :
                 msg.is_extended_id = True
                 self.linkQueue.put(msg)
                 response = {
-                    "status" : 1
+                    "code": "200",
+                    "msg": "SEND_SUCCESS",
+                    "status": True
                 }
                 return make_response(response, 200)
             except :
                 response = {
-                    "status" : 0
+                    "code": "400",
+                    "msg": "BAD_REQUEST",
+                    "status": False
                 }
                 return make_response(response, 400)
             

@@ -9,12 +9,20 @@ from can.broadcastmanager import ModifiableCyclicTaskABC, CyclicSendTaskABC
 from can.interfaces.socketcan.socketcan import CyclicSendTask
 
 class CanDataSimulator() :
+    """
+    Can data simulator, this simulate the frame of the can data
+    """
+
     def __init__(self) -> None:
         self.arbitration_id : int
         self.dlc : int
         self.data : list[int] = []
 
 class CanBatteryPackSimulatorData() :
+    """
+    Can battery pack data generator, this simulate the data of the battery pack and to be passed
+    into provider thread to be read
+    """
     def __init__(self, id : int) -> None:
         self.packVoltageBaseAddr = 0x764c864
         self.packMosfetAddr = 0x763c864
@@ -56,12 +64,23 @@ class CanBatteryPackSimulatorData() :
             self.data.append(dataPair)
 
 class DataProvider(threading.Thread) :
+    """
+    This class derived from thread class, this is used as reader and writer of the can bus line 
+    """
     def __init__(self, name : str, syncFlag : threading.Condition, buffer : queue.Queue) :
+        """
+        Class constructor and init
+
+        Args:
+            name (str) : the name of the thread
+            syncFlag (threading.Condition) : the flag to synchronize with lock
+            buffer (queue.Queue) : the write buffer to be sent into can bus line 
+        """
         threading.Thread.__init__(self, name=name)
         self.stopEvent = threading.Event()
         self.syncFlag = syncFlag
         self.buffer : queue.Queue = buffer
-        self.daemon = True
+        self.daemon = True  # set the thread into daemon thread
         self.batteryPack : list[CanBatteryPackSimulatorData] = []
         self.writeQueue = queue.Queue()
         self.override : int = 0
@@ -80,20 +99,53 @@ class DataProvider(threading.Thread) :
             self.batteryPack.append(sim)
 
     def initBus(self, bus : can.ThreadSafeBus) :
+        """
+        Init bus and pass the can.ThreadSafeBus object into this class bus
+
+        Args:
+            bus (can.ThreadSafeBus) : can bus object, this bus will be used as send and receive bus
+        """
         self.bus = bus
 
     def setListener(self, listener : list[Listener]) :
+        """
+        Register the listener / callback on can.Notifier. the listener will be called everytime can bus line
+        received data
+
+        Args:
+            listener (list[Listener]) : list of 'Listener' object
+        """
         self.listenerList = listener
         can.Notifier(self.bus, listener)
         # pass
 
     def link(self, queue : queue.Queue) :
+        """
+        Link / register the outside queue into this class queue, this queue will be used as write queue for can bus line
+        everytime this queue is not empty, the queue data will be sent into can bus line in FIFO manner
+
+        Args:
+            queue (queue.Queue) : the queue for write queue
+        """
         self.writeQueue = queue
 
     def insertQueue(self, msg : CanDataSimulator) :
+        """
+        Insert CanDataSimulator into this class write queue
+
+        Args:
+            msg (CanDataSimulator) : CAN data simulator message
+        """
         self.writeQueue.put(msg)
 
     def keep_alive_periodic_send(self, bus : can.Bus):
+        """
+        Periodically send keep alive message + override into can bus line. this message is important for 
+        taking control of stm32. To control stm32, keep alive and override message need to be sent periodically
+
+        Args:
+            bus (can.Bus) : bus object
+        """
         print("Starting to send a keep alive message every 600ms")
         # msg = can.Message(
         #     arbitration_id=0x1D41C8E8, data=[160, self.override, 0, 0, 0, 0, 0, 0], is_extended_id=True
@@ -104,13 +156,22 @@ class DataProvider(threading.Thread) :
             data=[(uniqueId & 0xFF), (uniqueId >> 8), self.override, 0, 0, 0, 0, 0],
             is_extended_id=True
         )
-        self.periodicKeepAlive = bus.send_periodic(msg, 0.6)
+        self.periodicKeepAlive = bus.send_periodic(msg, 0.6) #send message every 0.6s (600ms)
         if not isinstance(self.periodicKeepAlive, can.ModifiableCyclicTaskABC):
             print("This interface doesn't seem to support modification")
             self.periodicKeepAlive.stop()
             return
         
     def wake_periodic_send(self, bus : can.Bus):
+        """
+        Periodically send wake up message into can bus line. This message is used to keep the battery pack awake
+        and prevent the battery pack going into sleep. for now the wake up message is for id 1 - 32
+
+        Args:
+            bus (can.Bus) : bus object
+
+        """
+        #TODO : add flexible device id, not fixed into 1 - 32 id
         print("Starting to send wake message every 500ms")
         msgList : list[Message] = []
         for i in range(1,33,1) :
@@ -124,7 +185,7 @@ class DataProvider(threading.Thread) :
         for index, element in enumerate(msgList) :
             task = bus.send_periodic(element, 0.50 + (index*0.01), store_task=False)
             assert isinstance(task, can.CyclicSendTaskABC)
-            self.periodicWake.append(task)
+            self.periodicWake.append(task) #store the tasklist to track the task, for later can be used to stop the task
 
     @dispatch(CanDataSimulator)
     def provide(self, flag : CanDataSimulator) :
@@ -151,23 +212,31 @@ class DataProvider(threading.Thread) :
 
     @dispatch(Message)
     def provide(self, flag : Message) :
+        """
+        get data from write queue and send them into can bus line
+
+        Args:
+            flag (Message) : flag used to overload the function
+
+        """
         if self.stopEvent.is_set() :
             return
         while not self.writeQueue.empty() :
             print("Data from http")
             canData : Message = self.writeQueue.get()
             self.writeQueue.task_done()
-            if canData.arbitration_id == 0x1D41C8E8 :
+            if canData.arbitration_id == 0x1D41C8E8 : #when the frame id is keep alive frame id
                 print("overwrite override")
                 # self.periodicTask.stop()
-                self.override = canData.data[2]
-                self.periodicKeepAlive.modify_data(canData)
+                self.override = canData.data[2] #update this class override flag
+                self.periodicKeepAlive.modify_data(canData) #modify the override data
             else :
                 self.bus.send(canData)
-            sleep(0.1)
+            sleep(0.1) #sleep for 100ms to lighten the cpu
 
     def run(self) :
         self.stopEvent.clear()
+        print("Start can")
         if self.bus is None :
             print("Bus is not yet initialized, call the initBus method, and set the listener / callback")
             print("exiting the thread")
