@@ -1,5 +1,7 @@
+import sys
 import threading
 import queue
+import os
 # import keyboard
 import can
 from cancallback import CanCallBack
@@ -10,7 +12,35 @@ from time import sleep
 from httpserver import Server
 from can.bus import BusABC
 
+def get_platform():
+    platforms = {
+        'linux1' : 'Linux',
+        'linux2' : 'Linux',
+        'linux' : "Linux",
+        'darwin' : 'OS X',
+        'win32' : 'Windows'
+    }
+    if sys.platform not in platforms:
+        return sys.platform
+    
+    return platforms[sys.platform]
+
 if __name__ == "__main__":
+        
+    if(get_platform() == "Linux") :
+        print("Initialize CAN bus")
+        try :
+            os.system('sudo ip link set can0 type can bitrate 250000')
+            os.system('sudo ifconfig can0 up')
+        except :
+            print("Failed")
+            pass
+    else :
+        print("Operating system is not Linux")
+        print("Failed to setup CAN")
+        print("Exit")
+        exit()
+
     syncFlag = threading.Condition()
     data = DataCollection()   
     buffer = queue.Queue()
